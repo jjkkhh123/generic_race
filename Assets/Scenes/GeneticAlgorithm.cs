@@ -3,7 +3,7 @@ using UnityEngine;
 using System;
 using Random = UnityEngine.Random;
 using System.Linq;
-
+using UnityEngine.UI;
 
 
 public class GeneticAlgorithm : MonoBehaviour
@@ -12,8 +12,8 @@ public class GeneticAlgorithm : MonoBehaviour
     //Prefab은 유니티에서 미리 만들어 놓은 오브젝트를 재사용하기 위한 템플릿
     public int populationSize = 16; //한 세대당 차량 수
     private List<GameObject> cars = new List<GameObject>(); //Prefab에 이용될 오브젝트들의 리스트 선언
-    private int generation = 0;//초기 세대 0
-
+    private int generation = 1;//초기 세대 1
+    public Text generationText; // 추가: UI 요소 (학습 횟수를 표시할 Legacy Text)
     public CameraMove cameraMove;
 
     private float waitTime = 2f;
@@ -32,9 +32,10 @@ public class GeneticAlgorithm : MonoBehaviour
         {
             Debug.LogError("CameraMove component is not assigned or found on the main camera!");
         }
-
+        
         Debug.Log("Initializing population...");
         InitializePopulation();
+        UpdateUI(); // 추가: UI 업데이트
     }
 
     void Update()
@@ -56,8 +57,16 @@ public class GeneticAlgorithm : MonoBehaviour
             List<GameObject> bestCars = FindBestCars(); // 상위 4개 차량 찾기
             CreateNextGeneration(bestCars); // 새로운 세대 생성
         }
-    }
 
+    }
+    // 추가: UI 업데이트 (현재 세대 수 표시)
+    void UpdateUI()
+    {
+        if (generationText != null)
+        {
+            generationText.text = $"Generation: {generation}"; // 세대 정보 표시
+        }
+    }
     bool AllCarsStopped()
     {
         foreach (GameObject car in cars)
@@ -144,7 +153,9 @@ public class GeneticAlgorithm : MonoBehaviour
     // bestCar -> bestCars(List<GameObject>)로 변경
     void CreateNextGeneration(List<GameObject> bestCars)
     {
+        generation++;
         Debug.Log("다음 세대 생성 중...");
+        UpdateUI();
         foreach (GameObject car in cars)
         {
             if (car != null)
@@ -198,10 +209,9 @@ public class GeneticAlgorithm : MonoBehaviour
                 Debug.Log($"차량 {i}의 변이된 핸들링 데이터: " + string.Join(", ", mutatedHandlingHistory));
                 newCarMove.SetHandlingHistory(mutatedHandlingHistory);
             }
-
             newCars.Add(newCar);
         }
-
+        
         cars = newCars;
     }
 
