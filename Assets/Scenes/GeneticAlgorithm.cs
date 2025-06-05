@@ -5,21 +5,18 @@ using Random = UnityEngine.Random;
 using System.Linq;
 using UnityEngine.UI;
 
-
 public class GeneticAlgorithm : MonoBehaviour
 {
-    public GameObject carPrefab;//GameObject는 유니티의 기본 클래스로 게임의 모든 오브젝트를 나타냄
-    //Prefab은 유니티에서 미리 만들어 놓은 오브젝트를 재사용하기 위한 템플릿
-    public int populationSize = 16; //한 세대당 차량 수
-    private List<GameObject> cars = new List<GameObject>(); //Prefab에 이용될 오브젝트들의 리스트 선언
-    private int generation = 1;//초기 세대 1
-    public Text generationText; // 추가: UI 요소 (학습 횟수를 표시할 Legacy Text)
+    public GameObject carPrefab;
+    public int populationSize = 16;
+    private List<GameObject> cars = new List<GameObject>();
+    private int generation = 1;
+    public Text generationText;
     public CameraMove cameraMove;
 
     private float waitTime = 2f;
     private float elapsedTime = 0f;
     private bool waiting = true;
-    public static float[] bestHandlingHistory = new float[1000]; //
 
     void Start()
     {
@@ -32,10 +29,10 @@ public class GeneticAlgorithm : MonoBehaviour
         {
             Debug.LogError("CameraMove component is not assigned or found on the main camera!");
         }
-        
+
         Debug.Log("Initializing population...");
         InitializePopulation();
-        UpdateUI(); // 추가: UI 업데이트
+        UpdateUI();
     }
 
     void Update()
@@ -54,19 +51,19 @@ public class GeneticAlgorithm : MonoBehaviour
         if (AllCarsStopped())
         {
             Debug.Log("유전 알고리즘 실행!");
-            List<GameObject> bestCars = FindBestCars(); // 상위 4개 차량 찾기
-            CreateNextGeneration(bestCars); // 새로운 세대 생성
+            List<GameObject> bestCars = FindBestCars();
+            CreateNextGeneration(bestCars);
         }
-
     }
-    // 추가: UI 업데이트 (현재 세대 수 표시)
+
     void UpdateUI()
     {
         if (generationText != null)
         {
-            generationText.text = $"Generation: {generation}"; // 세대 정보 표시
+            generationText.text = $"Generation: {generation}";
         }
     }
+
     bool AllCarsStopped()
     {
         foreach (GameObject car in cars)
@@ -74,16 +71,16 @@ public class GeneticAlgorithm : MonoBehaviour
             CarMove carMove = car.GetComponent<CarMove>();
             if (carMove != null && !carMove.isStopped)
             {
-                return false; // 하나라도 멈추지 않았다면 계속 진행
+                return false;
             }
         }
         Debug.Log("모든 차량이 멈춤. 다음 세대 생성 시작!");
-        return true; // 모든 차량이 멈췄다면 true 반환
+        return true;
     }
 
     void InitializePopulation()
     {
-        cars.Clear(); // 기존 차량 리스트 초기화
+        cars.Clear();
 
         for (int i = 0; i < populationSize; i++)
         {
@@ -91,18 +88,12 @@ public class GeneticAlgorithm : MonoBehaviour
             GameObject car = Instantiate(carPrefab, spawnPos, Quaternion.identity);
             CarMove newCarMove = car.GetComponent<CarMove>();
 
-            if (newCarMove != null)
-            {
-                float[] individualHandlingHistory = GenerateHandlingHistory(); // 개체마다 핸들링 데이터 생성
-                newCarMove.SetHandlingHistory(individualHandlingHistory);
-            }
-
             cars.Add(car);
         }
 
         if (cameraMove != null)
         {
-            cameraMove.SetCarList(cars.ToArray()); // 올바르게 메서드 호출
+            cameraMove.SetCarList(cars.ToArray());
         }
         else
         {
@@ -110,23 +101,8 @@ public class GeneticAlgorithm : MonoBehaviour
         }
     }
 
-    float[] GenerateHandlingHistory()
-    {
-        float[] handlingHistory = new float[1000];
-
-        for (int i = 0; i < handlingHistory.Length; i++)
-        {
-            handlingHistory[i] = Random.Range(-1000f, 1000f); // 랜덤 핸들링 데이터 생성
-        }
-
-        Debug.Log("Generated Handling History: " + string.Join(", ", handlingHistory));
-        return handlingHistory; // 개별 차량에 적용될 유전 데이터 반환
-    }
-
-    // 상위 4개 차량을 반환하는 메서드로 변경
     List<GameObject> FindBestCars()
     {
-        // 차량과 점수를 튜플로 묶어서 리스트 생성
         List<(GameObject car, int score)> carScores = new List<(GameObject, int)>();
 
         foreach (GameObject car in cars)
@@ -138,7 +114,6 @@ public class GeneticAlgorithm : MonoBehaviour
             }
         }
 
-        // 점수 기준 내림차순 정렬 후 상위 4개 선택
         var topCars = carScores
             .OrderByDescending(cs => cs.score)
             .Take(4)
@@ -149,13 +124,12 @@ public class GeneticAlgorithm : MonoBehaviour
         return topCars;
     }
 
-    
-    // bestCar -> bestCars(List<GameObject>)로 변경
     void CreateNextGeneration(List<GameObject> bestCars)
     {
         generation++;
         Debug.Log("다음 세대 생성 중...");
         UpdateUI();
+
         foreach (GameObject car in cars)
         {
             if (car != null)
@@ -163,21 +137,19 @@ public class GeneticAlgorithm : MonoBehaviour
                 Destroy(car);
             }
         }
-
         cars.Clear();
 
         List<GameObject> newCars = new List<GameObject>();
 
-        // 상위 4개 차량의 핸들링 데이터를 기반으로 새로운 세대 생성
-        List<float[]> baseHandlingHistories = new List<float[]>();
+        List<Neural_Network> baseNeuralNetworks = new List<Neural_Network>();
         foreach (var car in bestCars)
         {
             CarMove carMove = car.GetComponent<CarMove>();
             if (carMove != null)
             {
-                float[] copy = new float[carMove.handlingHistory.Length];
-                Array.Copy(carMove.handlingHistory, copy, copy.Length);
-                baseHandlingHistories.Add(copy);
+                Neural_Network copiedNet = new Neural_Network();
+                Array.Copy(carMove.neuralNet.weights, copiedNet.weights, carMove.neuralNet.weights.Length);
+                baseNeuralNetworks.Add(copiedNet);
             }
         }
 
@@ -189,32 +161,16 @@ public class GeneticAlgorithm : MonoBehaviour
 
             if (newCarMove != null)
             {
-                // 상위 4개 중 랜덤으로 하나 선택
-                float[] parentHandling = baseHandlingHistories.Count > 0
-                    ? baseHandlingHistories[Random.Range(0, baseHandlingHistories.Count)]
-                    : GenerateHandlingHistory();
+                Neural_Network parentNet = baseNeuralNetworks.Count > 0
+                    ? baseNeuralNetworks[Random.Range(0, baseNeuralNetworks.Count)]
+                    : new Neural_Network();
 
-                float[] mutatedHandlingHistory = new float[parentHandling.Length];
-                Array.Copy(parentHandling, mutatedHandlingHistory, mutatedHandlingHistory.Length);
-
-                for (int j = 0; j < mutatedHandlingHistory.Length; j++)
-                {
-                    float mutationChance = Random.Range(0f, 1f);
-                    if (mutationChance < 0.1f)
-                    {
-                        mutatedHandlingHistory[j] += Random.Range(-200f, 200f);
-                    }
-                }
-
-                Debug.Log($"차량 {i}의 변이된 핸들링 데이터: " + string.Join(", ", mutatedHandlingHistory));
-                newCarMove.SetHandlingHistory(mutatedHandlingHistory);
+                parentNet.Mutate(0.1f);
+                newCarMove.neuralNet = parentNet;
             }
             newCars.Add(newCar);
         }
-        
+
         cars = newCars;
     }
-
-
-
 }

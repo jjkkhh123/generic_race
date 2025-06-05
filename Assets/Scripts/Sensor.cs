@@ -11,8 +11,8 @@ public class Sensor : MonoBehaviour
     private SpriteRenderer Cross;
 
     // 최대 및 최소 감지 거리
-    private const float MAX_DIST = 10f; // 최대 감지 거리: 10 유닛
-    private const float MIN_DIST = 0.01f; // 최소 감지 거리: 0.01 유닛
+    public static float MAX_DIST = 6f; // 최대 감지 거리: 10 유닛
+    public static float MIN_DIST = 0.01f; // 최소 감지 거리: 0.01 유닛
 
     /// 현재 센서 감지 값 (최대 거리 대비 백분율).
     public float Output

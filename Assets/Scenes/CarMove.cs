@@ -1,52 +1,84 @@
 using UnityEngine;
 using System;
+
 public class CarMove : MonoBehaviour
 {
     public bool isStopped = false;
-
-    // 유전 요소
-    public int handling = 100;  // 회전 강도 (예: 500~1000 사이)
-    private float moveSpeed = 3f;  // 고정 이동 속도
+    public int handling = 100;
+    private float moveSpeed = 3f;
 
     private int nextCheckpointID = 0;
     private int score = 0;
     private int checkp_score = 1000;
-    public float[] handlingHistory = new float[1000];
-
-    private int frameIndex = 0; // 현재 프레임 인덱스
+    private int frameIndex = 0;
+    private float minSpeed = 1f; // 최소 속도 설정
+    public Neural_Network neuralNet; // 신경망 추가
+    public Sensor[] sensors; // 차량에 부착된 센서들
 
     void Start()
     {
-        Debug.Log("차가 움직이기 시작합니다!");
-        /*
-        if (GeneticAlgorithm.bestHandlingHistory != null && GeneticAlgorithm.bestHandlingHistory.Length > 0)
-        {
-            handlingHistory = new float[1000];
-            Array.Copy(GeneticAlgorithm.bestHandlingHistory, handlingHistory, handlingHistory.Length);
-        }
-        */
-    }
+        neuralNet = new Neural_Network(); // 신경망 인스턴스 생성
 
+        // 센서 자동 검색 및 초기화
+        sensors = GetComponentsInChildren<Sensor>();
+
+        if (sensors == null || sensors.Length == 0)
+        {
+            Debug.LogError("센서가 올바르게 할당되지 않았습니다! 차량에 Sensor 컴포넌트가 있는지 확인하세요.");
+        }
+    }
 
     void Update()
     {
-        if(!isStopped)
+        if (!isStopped)
         {
-            // i번째 핸들링 값을 가져와 적용
-            float rotation = handlingHistory[frameIndex] * Time.deltaTime;
+            if (sensors == null || sensors.Length == 0)
+            {
+                Debug.LogError("센서 배열이 초기화되지 않았습니다! 차량이 센서를 포함하고 있는지 확인하세요.");
+                return;
+            }
 
+            float[] sensorValues = new float[sensors.Length];
+
+            for (int i = 0; i < sensors.Length; i++)
+            {
+                sensorValues[i] = sensors[i].Output; // 센서값 가져오기
+            }
+
+            float[] nnOutputs = neuralNet.Predict(sensorValues); // 신경망 출력 받기
+            float handlingOutput = nnOutputs[0];
+            float speedOutput = Mathf.Max(nnOutputs[1], minSpeed); // 최소 속도 적용
+
+            float rotation = handlingOutput * Time.deltaTime;
             transform.Rotate(0, 0, -rotation);
-            //Debug.Log(rotation);
-            transform.position += transform.right * moveSpeed * Time.deltaTime;
-            frameIndex = (frameIndex + 1) % handlingHistory.Length;
+            transform.position += transform.right * speedOutput * Time.deltaTime;
 
-        }
-        Checkpoint targetCheckpoint = FindCheckpointByID(nextCheckpointID);
-        if (targetCheckpoint != null)
-        {
-            float distanceX = Mathf.Abs(transform.position.x - targetCheckpoint.transform.position.x);
-            float distanceY = Mathf.Abs(transform.position.y - targetCheckpoint.transform.position.y);
-            score = checkp_score - Mathf.RoundToInt(distanceX * 10f) - Mathf.RoundToInt(distanceY * 10f);
+            // 점수 계산 로직 추가
+            Checkpoint targetCheckpoint = FindCheckpointByID(nextCheckpointID);
+
+            if (targetCheckpoint != null)
+            {
+                float distanceX = Mathf.Abs(transform.position.x - targetCheckpoint.transform.position.x);
+                float distanceY = Mathf.Abs(transform.position.y - targetCheckpoint.transform.position.y);
+                float totalDistance = distanceX + distanceY;
+
+                // 거리 기반 점수 계산
+                int distancePenalty = Mathf.RoundToInt(totalDistance * 10f);
+                score = checkp_score - distancePenalty;
+
+                // 너무 멀리 벗어나면 패널티 추가
+                if (totalDistance > 5f)
+                {
+                    score -= 500;
+                }
+
+                // 체크포인트를 통과하면 추가 점수
+                if (totalDistance < 0.5f)
+                {
+                    score += 1000;
+                    nextCheckpointID++;
+                }
+            }
         }
     }
 
@@ -55,7 +87,7 @@ public class CarMove : MonoBehaviour
         if (collision.gameObject.layer == LayerMask.NameToLayer("wall"))
         {
             isStopped = true;
-            Debug.Log(score);
+            Debug.Log($"차량 충돌! 점수: {score}");
         }
     }
 
@@ -69,6 +101,7 @@ public class CarMove : MonoBehaviour
             checkp_score += 1000;
         }
     }
+
     private Checkpoint FindCheckpointByID(int id)
     {
         foreach (Checkpoint checkpoint in FindObjectsByType<Checkpoint>(FindObjectsSortMode.None))
@@ -79,12 +112,6 @@ public class CarMove : MonoBehaviour
             }
         }
         return null;
-    }
-
-    public void SetHandlingHistory(float[] history)
-    {
-        handlingHistory = new float[1000]; // 새로운 배열 생성
-        Array.Copy(history, handlingHistory, handlingHistory.Length);
     }
 
     public int GetScore()
