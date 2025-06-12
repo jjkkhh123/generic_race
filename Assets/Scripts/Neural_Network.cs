@@ -1,43 +1,66 @@
 using UnityEngine;
-using System; // System.Math를 사용하기 위해 추가
+using System;
 
 public class Neural_Network
 {
-    public float[,] weights;
-    private int inputSize = 5;
-    private int outputSize = 2;
+    public float[,] inputToHiddenWeights;  // 입력층 → 은닉층 가중치
+    public float[,] hiddenToOutputWeights; // 은닉층 → 출력층 가중치
+    private int inputSize = 5;  // 첫 번째 레이어 (센서 입력)
+    private int hiddenSize = 3; // 두 번째 레이어 (중간 은닉층)
+    private int outputSize = 2; // 출력층 (Handling, Speed)
 
     public Neural_Network()
     {
-        weights = new float[inputSize, outputSize];
+        inputToHiddenWeights = new float[inputSize, hiddenSize];
+        hiddenToOutputWeights = new float[hiddenSize, outputSize];
+
         for (int i = 0; i < inputSize; i++)
+        {
+            for (int j = 0; j < hiddenSize; j++)
+            {
+                inputToHiddenWeights[i, j] = UnityEngine.Random.Range(-0.2f, 0.2f);
+            }
+        }
+
+        for (int i = 0; i < hiddenSize; i++)
         {
             for (int j = 0; j < outputSize; j++)
             {
-                weights[i, j] = UnityEngine.Random.Range(-1f, 1f);
+                hiddenToOutputWeights[i, j] = UnityEngine.Random.Range(-0.2f, 0.2f);
             }
         }
     }
 
     public float[] Predict(float[] sensorInputs)
     {
+        float[] hiddenLayer = new float[hiddenSize];
         float[] outputs = new float[outputSize];
 
+        // 입력층 → 은닉층
+        for (int j = 0; j < hiddenSize; j++)
+        {
+            hiddenLayer[j] = 0;
+            for (int i = 0; i < inputSize; i++)
+            {
+                hiddenLayer[j] += sensorInputs[i] * inputToHiddenWeights[i, j];
+            }
+            hiddenLayer[j] = (float)Math.Tanh(hiddenLayer[j]);
+        }
+
+        // 은닉층 → 출력층
         for (int j = 0; j < outputSize; j++)
         {
             outputs[j] = 0;
-
-            for (int i = 0; i < inputSize; i++)
+            for (int i = 0; i < hiddenSize; i++)
             {
-                outputs[j] += sensorInputs[i] * weights[i, j];
+                outputs[j] += hiddenLayer[i] * hiddenToOutputWeights[i, j];
             }
-
-            // `System.Math.Tanh()` 사용
             outputs[j] = (float)Math.Tanh(outputs[j]);
         }
 
-        outputs[0] *= 100f;
-        outputs[1] = Mathf.Max(outputs[1] * 5f, 1f);
+        // 즉각 반응 계수 추가 (더 민감하게 반응하도록)
+        outputs[0] = Mathf.Clamp(outputs[0] * 70f, -40f, 40f); // 회전 반응 증가
+        outputs[1] = Mathf.Max(outputs[1] * 5f, 1f); // 속도 조절
 
         return outputs;
     }
@@ -46,11 +69,22 @@ public class Neural_Network
     {
         for (int i = 0; i < inputSize; i++)
         {
+            for (int j = 0; j < hiddenSize; j++)
+            {
+                if (UnityEngine.Random.Range(0f, 1f) < mutationRate)
+                {
+                    inputToHiddenWeights[i, j] += UnityEngine.Random.Range(-0.3f, 0.3f);
+                }
+            }
+        }
+
+        for (int i = 0; i < hiddenSize; i++)
+        {
             for (int j = 0; j < outputSize; j++)
             {
                 if (UnityEngine.Random.Range(0f, 1f) < mutationRate)
                 {
-                    weights[i, j] += UnityEngine.Random.Range(-0.5f, 0.5f);
+                    hiddenToOutputWeights[i, j] += UnityEngine.Random.Range(-0.3f, 0.3f);
                 }
             }
         }

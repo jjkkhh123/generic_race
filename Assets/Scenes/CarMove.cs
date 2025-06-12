@@ -11,7 +11,7 @@ public class CarMove : MonoBehaviour
     private int score = 0;
     private int checkp_score = 1000;
     private int frameIndex = 0;
-    private float minSpeed = 1f; // 최소 속도 설정
+    private float minSpeed = 2f; // 최소 속도 설정
     public Neural_Network neuralNet; // 신경망 추가
     public Sensor[] sensors; // 차량에 부착된 센서들
 

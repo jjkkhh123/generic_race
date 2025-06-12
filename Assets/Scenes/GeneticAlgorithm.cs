@@ -148,7 +148,11 @@ public class GeneticAlgorithm : MonoBehaviour
             if (carMove != null)
             {
                 Neural_Network copiedNet = new Neural_Network();
-                Array.Copy(carMove.neuralNet.weights, copiedNet.weights, carMove.neuralNet.weights.Length);
+
+                // 올바르게 가중치를 복사
+                Array.Copy(carMove.neuralNet.inputToHiddenWeights, copiedNet.inputToHiddenWeights, carMove.neuralNet.inputToHiddenWeights.Length);
+                Array.Copy(carMove.neuralNet.hiddenToOutputWeights, copiedNet.hiddenToOutputWeights, carMove.neuralNet.hiddenToOutputWeights.Length);
+
                 baseNeuralNetworks.Add(copiedNet);
             }
         }
@@ -165,7 +169,8 @@ public class GeneticAlgorithm : MonoBehaviour
                     ? baseNeuralNetworks[Random.Range(0, baseNeuralNetworks.Count)]
                     : new Neural_Network();
 
-                parentNet.Mutate(0.1f);
+                // 변이를 강화하여 세대가 지나면서 학습이 이루어지도록 함
+                parentNet.Mutate(0.2f);
                 newCarMove.neuralNet = parentNet;
             }
             newCars.Add(newCar);
